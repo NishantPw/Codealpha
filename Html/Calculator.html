@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Basic Calculator</title>
+    <style>
+        /* Reset */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #222;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .calculator {
+            background: #333;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            width: 320px;
+            padding: 20px;
+            color: white;
+        }
+
+        .display {
+            background: #111;
+            border-radius: 8px;
+            height: 60px;
+            font-size: 2rem;
+            padding: 10px 20px;
+            text-align: right;
+            overflow-x: auto;
+            user-select: none;
+            margin-bottom: 15px;
+            white-space: nowrap;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 12px;
+        }
+
+        button {
+            font-size: 1.2rem;
+            padding: 18px;
+            border: none;
+            border-radius: 8px;
+            background: #444;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            user-select: none;
+        }
+
+        button.operator {
+            background: #f57c00;
+        }
+
+        button.operator:hover {
+            background: #e65100;
+        }
+
+        button.clear {
+            background: #d32f2f;
+        }
+
+        button.clear:hover {
+            background: #b71c1c;
+        }
+
+        button.equal {
+            background: #388e3c;
+            grid-column: span 2;
+        }
+
+        button.equal:hover {
+            background: #1b5e20;
+        }
+
+        button:hover {
+            background: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="calculator" role="application" aria-label="Calculator">
+        <div id="display" class="display" aria-live="polite" aria-atomic="true">0</div>
+        <div class="buttons">
+            <button class="clear" id="clear" aria-label="Clear">C</button>
+            <button class="operator" data-operator="÷" aria-label="Divide">÷</button>
+            <button class="operator" data-operator="×" aria-label="Multiply">×</button>
+            <button class="operator" data-operator="−" aria-label="Subtract">−</button>
+
+            <button data-number="7" aria-label="Seven">7</button>
+            <button data-number="8" aria-label="Eight">8</button>
+            <button data-number="9" aria-label="Nine">9</button>
+            <button class="operator" data-operator="+" aria-label="Add">+</button>
+
+            <button data-number="4" aria-label="Four">4</button>
+            <button data-number="5" aria-label="Five">5</button>
+            <button data-number="6" aria-label="Six">6</button>
+            <button data-number="1" aria-label="One">1</button>
+
+            <button data-number="2" aria-label="Two">2</button>
+            <button data-number="3" aria-label="Three">3</button>
+            <button data-number="0" style="grid-column: span 2;" aria-label="Zero">0</button>
+            <button data-number="." aria-label="Decimal point">.</button>
+
+            <button class="equal" id="equals" aria-label="Equals">=</button>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const display = document.getElementById('display');
+            const buttons = document.querySelectorAll('button');
+            let currentInput = '';
+            let resultShown = false;
+
+            // Map the operators to JS operators for evaluation
+            const operatorMap = {
+                '÷': '/',
+                '×': '*',
+                '−': '-',
+                '+': '+'
+            };
+
+            // Update display safely
+            function updateDisplay(value) {
+                display.textContent = value || '0';
+            }
+
+            // Handle button click
+            function handleButtonClick(e) {
+                const target = e.target;
+                if (target.id === 'clear') {
+                    currentInput = '';
+                    updateDisplay(currentInput);
+                    resultShown = false;
+                    return;
+                }
+                if (target.id === 'equals') {
+                    calculateResult();
+                    return;
+                }
+
+                const num = target.getAttribute('data-number');
+                const op = target.getAttribute('data-operator');
+
+                if (num !== null) {
+                    if (resultShown) {
+                        // Start new input after result shown
+                        if (num === '.') {
+                            currentInput = '0.';
+                        } else {
+                            currentInput = num;
+                        }
+                        resultShown = false;
+                    } else {
+                        // Prevent multiple decimals in one number segment
+                        if (num === '.') {
+                            const parts = currentInput.split(/[\+\-\*\/]/);
+                            if (parts[parts.length - 1].includes('.')) {
+                                return; // ignore second decimal point in the current number
+                            }
+                            if (currentInput === '' || /[\+\-\*\/]$/.test(currentInput)) {
+                                // If decimal pressed after operator or empty input, prepend 0
+                                currentInput += '0';
+                            }
+                        }
+                        currentInput += num;
+                    }
+                    updateDisplay(currentInput);
+                } else if (op !== null) {
+                    if (currentInput === '' && op !== '−') {
+                        // Disallow operator except minus at start (negative number)
+                        return;
+                    }
+                    if (resultShown) {
+                        resultShown = false;
+                    }
+                    // Prevent multiple operators in a row
+                    if (/[\+\-\*\/]$/.test(currentInput)) {
+                        currentInput = currentInput.slice(0, -1);
+                    }
+                    currentInput += operatorMap[op];
+                    updateDisplay(currentInput.replace(/\*/g, '×').replace(/\//g, '÷'));
+                }
+            }
+
+            // Calculate the result
+            function calculateResult() {
+                if (currentInput === '') return;
+                // Remove trailing operators
+                let expression = currentInput.replace(/[\+\-\*\/]$/, '');
+                try {
+                    // Evaluate expression safely
+                    const evalResult = Function('"use strict";return (' + expression + ')')();
+                    currentInput = String(evalResult);
+                    updateDisplay(currentInput);
+                    resultShown = true;
+                } catch {
+                    updateDisplay('Error');
+                    currentInput = '';
+                    resultShown = false;
+                }
+            }
+
+            // Keyboard support
+            function handleKeyDown(e) {
+                const key = e.key;
+                if ((key >= '0' && key <= '9') || key === '.') {
+                    document.querySelector(`button[data-number="${key}"]`)?.click();
+                    e.preventDefault();
+                } else if (key === '+' || key === '-' || key === '*' || key === '/') {
+                    let opChar = key;
+                    if (key === '*') opChar = '×';
+                    if (key === '/') opChar = '÷';
+                    if (key === '-') opChar = '−';
+                    const button = Array.from(document.querySelectorAll('button.operator')).find(b => b.textContent === opChar);
+                    button?.click();
+                    e.preventDefault();
+                } else if (key === 'Enter' || key === '=') {
+                    document.getElementById('equals').click();
+                    e.preventDefault();
+                } else if (key === 'Backspace') {
+                    // Remove last char
+                    if (!resultShown && currentInput.length > 0) {
+                        currentInput = currentInput.slice(0, -1);
+                        updateDisplay(currentInput);
+                    }
+                    e.preventDefault();
+                } else if (key.toLowerCase() === 'c') {
+                    document.getElementById('clear').click();
+                    e.preventDefault();
+                }
+            }
+
+            buttons.forEach(button => {
+                button.addEventListener('click', handleButtonClick);
+            });
+            window.addEventListener('keydown', handleKeyDown);
+
+        })();
+    </script>
+</body>
+
+</html>
